@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Apartment maintenance payment</title>
+    <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+  </head>
+  <body>
+    <h1>Pay maintenance (integration example)</h1>
+    <p>This standalone form is for sandbox wiring only. Connect it to your authenticated member and maintenance records before production.</p>
+    <form id="payment-form">
+      <label>
+        Member ID
+        <input name="member_id" required value="unit-101">
+      </label>
+      <label>
+        Billing period
+        <input name="billing_period" type="month" required>
+      </label>
+      <label>
+        Amount in INR
+        <input name="amount" type="number" min="1" step="0.01" required value="1.00">
+      </label>
+      <label>
+        Name
+        <input name="customer_name" required value="Test Member">
+      </label>
+      <label>
+        Email
+        <input name="customer_email" type="email" required value="member@example.com">
+      </label>
+      <label>
+        Phone (10–15 digits)
+        <input name="customer_phone" inputmode="numeric" pattern="[0-9]{10,15}" required value="9999999999">
+      </label>
+      <button type="submit">Continue to Cashfree</button>
+    </form>
+    <pre id="message" aria-live="polite"></pre>
+    <script>
+      const form = document.querySelector("#payment-form");
+      const message = document.querySelector("#message");
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        message.textContent = "Creating payment order…";
+        const values = Object.fromEntries(new FormData(form));
+        values.amount = Number(values.amount);
+
+        try {
+          const response = await fetch("/api/payments", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(values),
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.detail || "Could not create payment");
+
+          const cashfree = Cashfree({
+            mode: result.environment === "production" ? "production" : "sandbox",
+          });
+          cashfree.checkout({
+            paymentSessionId: result.payment_session_id,
+            redirectTarget: "_self",
+          });
+        } catch (error) {
+          message.textContent = error.message;
+        }
+      });
+    </script>
+  </body>
+</html>
